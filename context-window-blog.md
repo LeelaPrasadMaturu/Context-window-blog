@@ -64,9 +64,9 @@ But here's the catch: token counts vary by tokenizer. The same sentence might be
 - One full page of a book (roughly 500 words) = about 650-700 tokens
 - A 280-character tweet = about 70 tokens
 
-So when someone says "1 lakh tokens", that's roughly 150 pages of a book, or about 75,000 words. That's a LOT of text - almost a full novel!
+So when someone says "1 lakh (100,000) tokens", that's roughly 150 pages of a book, or about 75,000 words. That's a LOT of text - almost a full novel!
 
-Or you can estimate it the way `pi` and `opencode` actually do in their code:
+Or you can estimate it the way `pi` and `OpenCode` actually do in their code:
 
 ```typescript
 // Both repos use this simple heuristic
@@ -74,7 +74,7 @@ const CHARS_PER_TOKEN = 4
 export const estimate = (input: string) => Math.round(input.length / 4)
 ```
 
-So 1 million tokens is approximately 750,000 words or about 3 million characters. Sounds massive, right? Well, hold that thought - we'll see why this isn't as simple as it looks.
+So 1 million tokens is approximately 750,000 words or about 4 million characters. Sounds massive, right? Well, hold that thought - we'll see why this isn't as simple as it looks.
 
 **Pro tip:** Before shipping production prompts—where every token adds up at scale—test them in the [Tokenizer Playground](https://huggingface.co/spaces/Xenova/the-tokenizer-playground) to optimize costs.
 
@@ -118,7 +118,7 @@ And stuff in the middle? It gets... fuzzy.
 
 **It's like a long boring college lecture.** Remember sitting in a 3-hour class? You probably remember what the professor said at the start (the intro) and the end (the summary before exam tips). But that stuff in the middle? Fuzzy at best. AI models have the same problem - they pay attention to the beginning and end, but zone out in the middle.
 
-RULER benchmarks show that most models start degrading in quality around 32K tokens - way before they hit their advertised limits ([Hsieh et al., 2024](https://arxiv.org/abs/2404.06654)). So when someone says "my model has 1M context", what they really mean is "my model can technically process 1M tokens but will probably give worse answers after 32K."
+RULER benchmarks show that most models start degrading in quality after about 32K tokens - way before they hit their advertised limits ([Hsieh et al., 2024](https://arxiv.org/abs/2404.06654)). So when someone says "my model has 1M context", what they really mean is "my model can technically process 1M tokens but will probably give worse answers after 32K."
 
 This is exactly why coding agents like pi and OpenCode don't just dump your entire codebase into the context. Instead, they use something much smarter: **compaction**.
 
@@ -140,7 +140,7 @@ But the implementation? That's where it gets interesting.
 
 ### When Does Compaction Trigger?
 
-Both pi and opencode use a similar trigger condition. Here's how pi does it:
+Both pi and OpenCode use a similar trigger condition. Here's how pi does it:
 
 ```typescript
 // From pi/packages/coding-agent/src/core/compaction/compaction.ts (lines 219-222)
@@ -298,7 +298,7 @@ When this happens, the agent compacts and retries once. Pretty neat fallback.
 
 ### Tool Output Pruning
 
-There's another trick opencode uses - pruning old tool outputs even before full compaction:
+There's another trick OpenCode uses - pruning old tool outputs even before full compaction:
 
 ```typescript
 export const PRUNE_MINIMUM = 20_000   // Start pruning after 20K tokens of tool output
@@ -316,7 +316,7 @@ Okay, here's a tricky edge case that pi handles really well. What if a SINGLE tu
 
 Normally, compaction keeps entire turns intact. But if one turn has like 50K tokens of tool output (maybe you read a huge file), you can't keep it all.
 
-Pi detects this:
+pi detects this:
 
 ```typescript
 // Cut point lands mid-turn at assistant message
@@ -447,13 +447,13 @@ This is actually quite clever. Instead of constantly updating system context (wh
 
 ## RAG in Coding Agents: The 2026 Reality
 
-Okay, here's something that might surprise you. When I dug through both the pi and opencode codebases looking for RAG (Retrieval Augmented Generation) implementation, you know what I found?
+Okay, here's something that might surprise you. When I dug through both the pi and OpenCode codebases looking for RAG (Retrieval-Augmented Generation) implementation, you know what I found?
 
 **Nothing.**
 
 No vector databases. No embeddings. No semantic search over your codebase. Both repos confirmed this:
 
-> "Pi does not implement RAG. Searches for `embedding`, `vector`, `retrieval`, and `RAG` found no semantic search or vector store."
+> "pi does not implement RAG. Searches for `embedding`, `vector`, `retrieval`, and `RAG` found no semantic search or vector store."
 
 > "There is no vector/embedding-based RAG pipeline in OpenCode. No vector DB, no embedding index for session context."
 
@@ -496,7 +496,7 @@ OpenCode even has truncation guidance that tells the model to delegate large rea
 
 ```typescript
 // From opencode tool/truncate.ts
-? `...Use the Task tool to have explore agent process this file with Grep and Read. 
+? `...Use the Task tool to have the explore agent process this file with Grep and Read. 
    Do NOT read the full file yourself - delegate to save context.`
 : `...Use Grep to search the full content or Read with offset/limit...`
 ```
@@ -545,7 +545,7 @@ Just because a model advertises 1 million tokens doesn't mean you should use all
 
 ### 2. Configure Compaction Settings
 
-Both pi and opencode let you tune compaction. Here are the configs:
+Both pi and OpenCode let you tune compaction. Here are the configs:
 
 **For pi** (in `~/.pi/agent/settings.json` or `<project>/.pi/settings.json`):
 
@@ -559,7 +559,7 @@ Both pi and opencode let you tune compaction. Here are the configs:
 }
 ```
 
-**For opencode** (in `opencode.json`):
+**For OpenCode** (in `opencode.json`):
 
 ```json
 {
@@ -574,25 +574,25 @@ Both pi and opencode let you tune compaction. Here are the configs:
 
 What do these mean?
 - **reserveTokens / buffer** - Headroom for the model's response. Don't set this too low or responses get cut off.
-- **keepRecentTokens / keep.tokens** - How much recent conversation to keep verbatim. Higher = more context preserved, but slower compaction.
-- **prune** (opencode only) - Clear old tool outputs without full compaction. Lighter weight.
+- **keepRecentTokens / keep.tokens** - How much recent conversation to keep verbatim. Higher = more context preserved, but compaction triggers more often as you hit the limit sooner.
+- **prune** (OpenCode only) - Clear old tool outputs without full compaction. Lighter weight.
 
 ### 3. Use Manual Compaction When Needed
 
 Both tools support manual compaction:
 - **pi**: Type `/compact` in the chat, optionally with instructions like `/compact focus on the auth implementation`
-- **opencode**: Use `/compact` or `/summarize`
+- **OpenCode**: Use `/compact` or `/summarize`
 
 This is useful when you're about to start a new task and want a clean slate with good context.
 
 ### 4. Write Progress to Files
 
-Here's a pro tip from Anthropic's own recommendations: don't rely entirely on context for state. Write important state to files.
+Here's a pro tip from [Anthropic's context engineering guide](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents): don't rely entirely on context for state. Write important state to files.
 
 ```bash
 # Good practices:
 git commit -m "Implemented auth middleware"  # Commits as checkpoints
-echo "## Current Progress\n- Auth done\n- Need to add tests" > PROGRESS.md
+printf '## Current Progress\n- Auth done\n- Need to add tests\n' > PROGRESS.md
 ```
 
 After compaction, the agent can use `git log` and `git diff` to reconstruct what happened. The summary preserves high-level context, and files preserve details.
@@ -606,7 +606,7 @@ After compaction, the agent can use `git log` and `git diff` to reconstruct what
 
 Each entry has an `id` and `parentId`, forming a tree. You can navigate branches with `/tree`.
 
-**opencode** uses SQLite via Drizzle. Compaction never deletes history - it just changes what the model sees. The full transcript is always recoverable.
+**OpenCode** uses SQLite via Drizzle. Compaction never deletes history - it just changes what the model sees. The full transcript is always recoverable.
 
 ### 6. Monitor Context Usage
 
@@ -655,9 +655,9 @@ if (compaction) {
 }
 ```
 
-### opencode: SQLite with Message Filtering
+### OpenCode: SQLite with Message Filtering
 
-opencode stores everything in SQLite but filters what the model sees:
+OpenCode stores everything in SQLite but filters what the model sees:
 
 ```typescript
 // From opencode message-v2.ts
@@ -679,8 +679,6 @@ The key insight: **compaction never deletes history - it changes the model-visib
 
 ---
 
----
-
 ## Part 2: Beyond the Basics - Cost, Memory, and Common Misconceptions
 
 Alright, now that we've covered the basics, let's get into some deeper questions that developers often ask but rarely get straight answers to.
@@ -699,7 +697,7 @@ Cursor's agent is like that kitchen manager - it doesn't just throw everything a
 
 From Cursor's [Best Practices blog](https://cursor.com/blog/agent-best-practices):
 
-> "When you use Agent, Cursor orchestrates tools specifically for every frontier model based on internal evals and external benchmarks."
+> Cursor's agent harness orchestrates components and tunes instructions and tools specifically for every frontier model based on internal evals and external benchmarks. *(Paraphrased from Cursor's blog)*
 
 In simple terms: the system knows that Claude likes certain tools, GPT prefers others. It adjusts automatically so you don't have to fiddle with prompts.
 
@@ -754,7 +752,7 @@ Here's a question I get a lot: "My model has 1M token context and my agent manag
 | What | What It Means | Who's In Charge |
 |------|---------------|-----------------|
 | **Model's Context Window** | The fixed limit of how much text the AI can see at once | The company that made the model (OpenAI, Anthropic, etc.) |
-| **Agent's Context** | The stuff the agent decides to show the AI | Your tool (Cursor, pi, opencode) |
+| **Agent's Context** | The stuff the agent decides to show the AI | Your tool (Cursor, pi, OpenCode) |
 
 DeepSeek-V3 can see 128K tokens at a time. That's fixed - you can't change it. What the agent does is **decide what to put** in those 128K tokens.
 
@@ -872,7 +870,7 @@ See those surcharges? GPT-5.4 doubles your bill once you go past 272K tokens. Ge
 Input:  900,000 tokens = 0.9 × ₹285  = ₹257
 Output:   5,000 tokens = 0.005 × ₹1,425 = ₹7
 ─────────────────────────────────────────────
-Total per query: ₹264 (about $3.17)
+Total per query: ₹264 (about $2.78)
 ```
 
 Do 10 such queries a day? That's **₹2,640/day** just for this one use case!
@@ -890,7 +888,7 @@ Now imagine doing 10 such queries a day - that's about ₹80,000/month, or a dec
 Input:  900,000 tokens = 0.9 × ₹476 (2x rate) = ₹428
 Output:   5,000 tokens = 0.005 × ₹1,425        = ₹7
 ─────────────────────────────────────────────────────
-Total per query: ₹435 (about $5.22)
+Total per query: ₹435 (about $4.58)
 ```
 
 That's **65% more expensive** because of the long-context surcharge!
@@ -915,7 +913,7 @@ If you're doing lots of queries, hosting models yourself becomes interesting:
 | What You're Looking At | Using API (Claude) | Running Your Own (DeepSeek-V3) |
 |------------------------|--------------------|-----------------------------|
 | How you pay | Per token | Hardware rent |
-| 10 lakh queries/month | ~₹2.5 crore | ~₹42 lakh (8×H100 cluster) |
+| 10 lakh queries/month | ~₹2.5 crore | ~₹42 lakh (8×H800 cluster) |
 | Cost per query | ~₹25 | ~₹4 |
 | Context limit | 1M | 128K |
 | Setup hassle | Zero | A lot |
@@ -985,7 +983,7 @@ When the model can't "hear" what's relevant in your context, it falls back to wh
 
 This one is wild. Research shows that models are worst at finding information placed in the MIDDLE of long contexts. Beginning and end? Fine. Middle? Forget it.
 
-**Like a cricket match on TV.** You remember the first over (how it started) and the last over (who won). But that middle overs slog between overs 15-35? Most people check their phones during that. AI models do the same - they "check their phones" during the middle of long contexts.
+**Like a cricket match on TV.** You remember the first over (how it started) and the last over (who won). But the slog through the middle overs (15-35)? Most people check their phones during that. AI models do the same - they "zone out" during the middle of long contexts.
 
 From [EMNLP 2025](https://aclanthology.org/anthology-files/pdf/findings/2025.findings-emnlp.1264.pdf):
 
@@ -1031,7 +1029,7 @@ See those "cliff" points? That's where things suddenly get bad.
 
 ## Compaction: Your Tool Does It vs The API Does It
 
-Earlier we talked about how pi and opencode compress old conversations. But there's another question: **who** does the compressing? Your tool? Or the AI provider directly?
+Earlier we talked about how pi and OpenCode compress old conversations. But there's another question: **who** does the compressing? Your tool? Or the AI provider directly?
 
 ### Two Ways to Do It
 
@@ -1046,7 +1044,7 @@ Earlier we talked about how pi and opencode compress old conversations. But ther
 
 ### When Your Tool Does It (Agent-Level)
 
-This is what pi and opencode do:
+This is what pi and OpenCode do:
 
 1. Tool notices you're running out of space
 2. Tool asks the AI: "Please summarize this conversation"
@@ -1065,7 +1063,7 @@ You just add a setting:
 ```json
 {
   "model": "claude-sonnet-4-20260514",
-  "max_tokens": 8096,
+  "max_tokens": 8192,
   "messages": [...],
   "context_management": {
     "edits": [{
@@ -1195,8 +1193,8 @@ When people say an agent "lost context", it's one of two things:
 
 The agent compressed old messages into a summary. The detailed messages are replaced with a short version.
 
-- **What's in agent's files:** Still everything
-- **What model sees:** Summary + recent messages
+- **What's in the agent's files:** Still everything
+- **What the model sees:** Summary + recent messages
 - **Result:** Model has less detail but key facts are kept
 
 This isn't "losing" - it's compressing.
@@ -1205,9 +1203,9 @@ This isn't "losing" - it's compressing.
 
 The agent started fresh, leaving old history behind.
 
-- **What's in agent's files:** Empty (new session)
-- **What model sees:** Just instructions
-- **Result:** Actually no memory of before
+- **What's in the agent's files:** Empty (new session)
+- **What the model sees:** Just instructions
+- **Result:** The model has no memory of what happened before
 
 This is a choice, not an accident.
 
@@ -1236,7 +1234,7 @@ If the agent crashes or resets, it can recover from:
 3. **PROGRESS.md files** - Notes you wrote survive
 4. **Summaries** - These are saved and can reload context
 
-This is why tools like pi and opencode save everything to files. The agent's "memory" isn't in the AI model - it's in your computer's files.
+This is why tools like pi and OpenCode save everything to files. The agent's "memory" isn't in the AI model - it's in your computer's files.
 
 ### Simple Way to Think About It
 
@@ -1278,7 +1276,7 @@ Every token costs money. At scale:
 | 500K tokens | ₹125 | ₹37.5 lakh |
 | 1M tokens | ₹250 | ₹75 lakh |
 
-Plus those surcharges we talked about make it worse.
+Plus, those surcharges we talked about make it even worse.
 
 #### 2. Responses Get Slower
 
@@ -1469,22 +1467,22 @@ Before you send a prompt with lots of context, ask yourself:
 
 | Thing | Typical Value |
 |-------|---------------|
-| **Cost of 1M token query** | ₹250-400 (API) or just hardware cost (self-hosted) |
-| **When quality drops** | Usually 32K-64K tokens, even if limit is higher |
+| **Cost of 1M token query** | ₹285-435 (API, varies by model and surcharges) or just hardware cost (self-hosted) |
+| **When quality drops** | Usually 32K-64K tokens, even if the limit is higher |
 | **When to trigger compaction** | At 60-70% full, not 100% |
 | **Surcharge kicks in** | Above 200K-272K tokens (depends on provider) |
 
-### Why Models Make Stuff Up at Large Context
+### Why Models Make Stuff Up With Large Context
 
 1. **Position tracking breaks** - Model gets confused about what's where
 2. **Attention spreads thin** - Important stuff drowns in the noise
-3. **Middle gets ignored** - Stuff at the start and end works better than middle
+3. **Middle gets ignored** - Stuff at the start and end works better than the middle
 
 ### Compaction Can Happen Two Ways
 
 | Where | Who Does It | Example |
 |-------|-------------|---------|
-| **Your tool** | Cursor, pi, opencode | Your own summarization prompts |
+| **Your tool** | Cursor, pi, OpenCode | Your own summarization prompts |
 | **The API** | Anthropic's Claude | `context_management` setting |
 
 ### What You Should Do
@@ -1496,9 +1494,9 @@ Before you send a prompt with lots of context, ask yourself:
 5. **Use caching** - Keep instructions constant for discounts
 6. **Save to files** - Put progress in PROGRESS.md or git commits
 
-### One Sentence Summary
+### The Bottom Line
 
-> **The AI model has no memory - it's just a smart function. The agent is the memory. Your job is to send the right info to the function, not to try making the function bigger.**
+> **The AI model has no memory - it's just a smart function. The agent is the memory. Your job is to send the right info to the function, not to try to make the function bigger.**
 
 ---
 
@@ -1507,9 +1505,9 @@ Before you send a prompt with lots of context, ask yourself:
 All code examples in this blog come from:
 
 - **pi repository**: `pi/packages/coding-agent/src/core/compaction/compaction.ts`, `session-manager.ts`, `model-registry.ts`
-- **opencode repository**: `opencode/packages/core/src/session/compaction.ts`, `opencode/packages/opencode/src/session/overflow.ts`, `CONTEXT.md`
+- **OpenCode repository**: `opencode/packages/core/src/session/compaction.ts`, `opencode/packages/opencode/src/session/overflow.ts`, `CONTEXT.md`
 
-Both are open source - go dig through them if you want to understand the implementation deeper!
+Both are open source - go dig through them if you want to understand the implementation in greater depth!
 
 ---
 
@@ -1523,21 +1521,17 @@ Understanding context windows isn't just academic - it directly affects your pro
 - Compaction and smart context management are your friends
 - Write progress to files - they survive everything
 
-If you found this useful, share it with a fellow developer who's been confused about why their coding assistant keeps forgetting things.
-
 ---
 
 ## Further Reading
 
 - [Anthropic's Context Engineering Guide](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
-- [DeepSeek-V3 Technical Report](https://github.com/deepseek-ai/DeepSeek-V3)
+- [DeepSeek-V3 Repository](https://github.com/deepseek-ai/DeepSeek-V3)
 - [Llama Models Repository](https://github.com/meta-llama/llama)
 
 ---
 
 *This post was written by exploring actual open-source codebases, not just reading documentation. Because that's how you really understand how things work.*
-
----
 
 ---
 
