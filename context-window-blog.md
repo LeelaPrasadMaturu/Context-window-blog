@@ -12,7 +12,9 @@ keywords:
   - coding productivity
   - LLM limits
   - prompt engineering
-author: "Leela prasad Maturu"
+author: "Leela Prasad Maturu"
+author_linkedin: "https://www.linkedin.com/in/leelaprasadm/"
+author_twitter: "https://x.com/leelaprasad04"
 date: 2026-06-09
 reading_time: "20 min read"
 canonical_url: ""
@@ -1537,6 +1539,16 @@ If you found this useful, share it with a fellow developer who's been confused a
 
 ---
 
-**Found this helpful?** Follow me for more deep-dives into developer tools and productivity tips.
+---
 
-**Have questions?** Drop a comment below or reach out on [Twitter/LinkedIn].
+## About the Author
+
+**Leela Prasad Maturu** writes about AI, developer tools, and how things actually work under the hood.
+
+**Connect with me:**
+- LinkedIn: [linkedin.com/in/leelaprasadm](https://www.linkedin.com/in/leelaprasadm/)
+- X (Twitter): [@leelaprasad04](https://x.com/leelaprasad04)
+
+**Found this helpful?** Share it with a developer friend who's been confused about why their AI assistant keeps forgetting things.
+
+**Want to collaborate on upcoming posts?** DM me on LinkedIn or X. Always happy to chat!
