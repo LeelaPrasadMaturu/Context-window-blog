@@ -14,7 +14,7 @@ keywords:
   - prompt engineering
 author: "Leela prasad Maturu"
 date: 2026-06-09
-reading_time: "25 min read"
+reading_time: "20 min read"
 canonical_url: ""
 og_image: "coding-tools-context-window-og.jpeg"
 ---
@@ -24,6 +24,8 @@ og_image: "coding-tools-context-window-og.jpeg"
 *A practical guide to understanding why your coding assistant sometimes forgets things, and what you can do about it*
 
 ![Context window visualization showing how text fits into a limited memory space](context-window-visualization-hero.jpeg)
+
+> **In a hurry?** [Jump to the TL;DR](#tldr-just-tell-me-what-i-need-to-know) for the 2-minute version.
 
 ---
 
@@ -675,54 +677,9 @@ The key insight: **compaction never deletes history - it changes the model-visib
 
 ---
 
-## Conclusion: Key Takeaways
-
-Alright, let's wrap this up. Here's what you should remember about context windows in coding agents:
-
-### The Big Picture
-
-1. **Context window = shared budget** - Your prompt, conversation history, tool outputs, AND the response all share the same space. When companies advertise "1M tokens", that's the total, not just your input.
-
-2. **Bigger isn't always better** - The "lost in the middle" problem means models struggle with information buried in long contexts. Effective performance usually degrades around 32K tokens, regardless of the advertised limit.
-
-3. **Compaction is your friend** - Both pi and opencode use LLM-based summarization to compress old conversation history while keeping recent context intact. This lets you have hours-long sessions without losing important context.
-
-4. **Token estimation is simple** - Both repos use the `chars/4` heuristic. 4 characters ≈ 1 token. Quick mental math: a 10,000 character file is about 2,500 tokens.
-
-5. **No vector RAG for code** - Neither pi nor opencode use embedding-based retrieval. They use tool-based search (grep, read, glob) which is more accurate for code navigation.
-
-### The Numbers That Matter
-
-| Setting | pi Default | opencode Default |
-|---------|------------|------------------|
-| Reserve for response | 16,384 tokens | 20,000 tokens |
-| Keep recent conversation | 20,000 tokens | 8,000 tokens |
-| Tool output truncation | 2,000 chars | 2,000 chars |
-
-### What To Do With This Knowledge
-
-1. **Don't stress about context limits** - The tools handle compaction automatically. Just use them naturally.
-
-2. **Use manual compaction strategically** - When switching tasks, `/compact` gives you a clean slate with good context.
-
-3. **Write important state to files** - Git commits and progress files survive compaction better than relying on context alone.
-
-4. **Trust the tools** - grep + read + glob is how these agents find code. It works better than you might expect.
-
-5. **Check your model's actual limits** - Look at `contextWindow` in the model config, not marketing claims.
-
-### The Future
-
-Context windows will keep growing. We're already seeing 10M token windows from Llama 4 Scout. But the fundamental challenges remain:
-- Attention mechanisms struggle with very long contexts
-- More context = more cost (you pay per token)
-- Quality of context matters more than quantity
-
-The real innovation isn't bigger windows - it's smarter context management. Compaction, summarization, tool-based retrieval, and subagent isolation are where the action is.
-
 ---
 
-## Part 2: The Stuff Nobody Tells You About Context
+## Part 2: Beyond the Basics - Cost, Memory, and Common Misconceptions
 
 Alright, now that we've covered the basics, let's get into some deeper questions that developers often ask but rarely get straight answers to.
 
@@ -907,34 +864,34 @@ See those surcharges? GPT-5.4 doubles your bill once you go past 272K tokens. Ge
 
 ### Let's Do the Maths
 
-**Situation:** You want Claude to analyze a big codebase - 900K tokens in, 5K tokens out.
+**Situation:** You want Claude Sonnet to analyze a big codebase - 900K tokens in, 5K tokens out.
 
 ```
-Input:  900,000 tokens = 0.9 × ₹250  = ₹225
-Output:   5,000 tokens = 0.005 × ₹1,250 = ₹6.25
+Input:  900,000 tokens = 0.9 × ₹285  = ₹257
+Output:   5,000 tokens = 0.005 × ₹1,425 = ₹7
 ─────────────────────────────────────────────
-Total per query: ₹231 (about $2.78)
+Total per query: ₹264 (about $3.17)
 ```
 
-Do 10 such queries a day? That's **₹2,310/day** just for this one use case!
+Do 10 such queries a day? That's **₹2,640/day** just for this one use case!
 
-**To put this in perspective:** A 1M token query costs about ₹250. That's roughly:
-- 2-3 samosas + chai at a decent cafe
+**To put this in perspective:** A 1M token query costs about ₹285. That's roughly:
+- 3-4 samosas + chai at a decent cafe
 - One month of a basic Netflix subscription
-- About 5 auto rides in Bangalore
+- About 1-2 auto rides in Bangalore
 
-Now imagine doing 10 such queries a day - that's ₹75,000/month, or a decent junior developer's salary just on AI bills!
+Now imagine doing 10 such queries a day - that's about ₹80,000/month, or a decent junior developer's salary just on AI bills!
 
-**Same thing with GPT-5.4 (with surcharge):**
+**Same thing with GPT-5.4 (with surcharge above 272K):**
 
 ```
-Input:  900,000 tokens = 0.9 × ₹415 (2x rate) = ₹374
-Output:   5,000 tokens = 0.005 × ₹1,250        = ₹6.25
+Input:  900,000 tokens = 0.9 × ₹476 (2x rate) = ₹428
+Output:   5,000 tokens = 0.005 × ₹1,425        = ₹7
 ─────────────────────────────────────────────────────
-Total per query: ₹380 (about $4.58)
+Total per query: ₹435 (about $5.22)
 ```
 
-That's **65% more expensive** because of the surcharge!
+That's **65% more expensive** because of the long-context surcharge!
 
 ### Running Your Own Server: Is It Worth It?
 
